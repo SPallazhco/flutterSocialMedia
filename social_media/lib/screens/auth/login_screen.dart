@@ -15,6 +15,22 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   String? _emailError;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkIfLoggedIn();
+  }
+
+  // Método para verificar si el usuario está autenticado
+  Future<void> _checkIfLoggedIn() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      Future.microtask(() {
+        Navigator.pushReplacementNamed(context, 'home');
+      });
+    }
+  }
+
   void _login() async {
     try {
       if (_emailController.text.trim().isEmpty) {
