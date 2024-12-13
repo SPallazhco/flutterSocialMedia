@@ -8,7 +8,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(30),
               topRight: Radius.circular(30),
             ),
@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.black.withOpacity(0.2), // Sombra suave
                 spreadRadius: 5,
                 blurRadius: 10,
-                offset: Offset(0, -3), // Sombra hacia arriba
+                offset: const Offset(0, -3), // Sombra hacia arriba
               ),
             ],
           ),
