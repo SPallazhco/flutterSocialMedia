@@ -3,9 +3,10 @@ import 'package:social_media/screens/auth/login_screen.dart';
 import 'package:social_media/screens/auth/register_screen.dart';
 import 'package:social_media/screens/feed/feed_screen.dart';
 import 'package:social_media/screens/home/home_screen.dart';
+import 'package:social_media/screens/post/create_post_screen.dart';
 import 'package:social_media/screens/profile/profile_screen.dart';
 import 'package:social_media/screens/search/search_screen.dart';
-import 'package:social_media/screens/settings/settings_screen.dart';
+import 'package:social_media/screens/profile/settings_screen.dart';
 
 class AppRoutes {
   static const String login = 'login';
@@ -15,6 +16,7 @@ class AppRoutes {
   static const String search = 'search';
   static const String profile = 'profile';
   static const String settings = 'settings';
+  static const String addPost = 'addPost';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -25,6 +27,7 @@ class AppRoutes {
       search: (BuildContext context) => const SearchScreen(),
       profile: (BuildContext context) => const ProfileScreen(),
       settings: (BuildContext context) => const SettingsScreen(),
+      addPost: (BuildContext context) => const CreatePostScreen(),
     };
   }
 }

@@ -18,11 +18,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkIfLoggedIn();
+    _checkIfLoggedIn(context);
   }
 
   // Método para verificar si el usuario está autenticado
-  Future<void> _checkIfLoggedIn() async {
+  Future<void> _checkIfLoggedIn(context) async {
     final user = _auth.currentUser;
     if (user != null) {
       Future.microtask(() {

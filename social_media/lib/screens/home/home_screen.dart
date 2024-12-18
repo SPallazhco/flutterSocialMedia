@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:social_media/screens/feed/feed_screen.dart';
+import 'package:social_media/screens/post/create_post_screen.dart';
 import 'package:social_media/screens/profile/profile_screen.dart';
 import 'package:social_media/screens/search/search_screen.dart';
-import 'package:social_media/screens/settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     FeedScreen(), // Pantalla principal de publicaciones
     SearchScreen(), // Pantalla de búsqueda
     ProfileScreen(), // Pantalla del perfil
-    SettingsScreen(), // Pantalla de configuraciones
+    CreatePostScreen(), // Pantalla de post
   ];
 
   // Cuando se selecciona una pestaña, se actualiza el estado con el índice
@@ -88,8 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Perfil',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.settings),
-                label: 'Configuración',
+                icon: Icon(Icons.post_add),
+                label: 'Publicar',
               ),
             ],
           ),
