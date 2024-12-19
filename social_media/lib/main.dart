@@ -23,7 +23,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       initialRoute: AppRoutes.login,
-      routes: AppRoutes.getRoutes(),
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => const Scaffold(
+          body: Center(child: Text('Ruta desconocida')),
+        ),
+      ), // Opcional: Maneja rutas desconocidas
     );
   }
 }

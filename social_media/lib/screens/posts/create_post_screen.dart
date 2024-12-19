@@ -4,34 +4,33 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:video_player/video_player.dart'; // Importa el paquete de video_player
 
 class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({Key? key}) : super(key: key);
+  const CreatePostScreen({super.key});
 
   @override
-  _CreatePostScreenState createState() => _CreatePostScreenState();
+  State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  // Variables necesarias
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  File? _mediaFile; // Archivo de imagen o video
-  bool isVideo = false; // Tipo de archivo seleccionado
-  bool isLoading = false; // Indicador de carga
+  File? _mediaFile;
+  bool isVideo = false;
+  bool isLoading = false;
 
-  // Controladores de texto
+  VideoPlayerController? _videoController; // Controlador del video
+
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
 
-  // Método para seleccionar imagen o video
   Future<void> _selectMedia() async {
     final picker = ImagePicker();
 
     try {
-      // Diálogo para elegir el tipo de archivo
       final mediaType = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
@@ -54,7 +53,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
       XFile? pickedFile;
 
-      // Lógica para seleccionar el archivo según el tipo
       if (mediaType == 'image') {
         pickedFile = await picker.pickImage(
           source: ImageSource.gallery,
@@ -62,18 +60,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           maxHeight: 1080,
         );
         isVideo = false;
+        _disposeVideoController(); // Libera el controlador si había un video cargado
       } else if (mediaType == 'video') {
-        pickedFile = await picker.pickVideo(
-          source: ImageSource.gallery,
-        );
+        pickedFile = await picker.pickVideo(source: ImageSource.gallery);
         isVideo = true;
       }
 
-      // Guardar el archivo seleccionado
       if (pickedFile != null) {
         setState(() {
           _mediaFile = File(pickedFile!.path);
         });
+
+        if (isVideo) {
+          _initializeVideoController(); // Inicializa el controlador si es un video
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,7 +82,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  // Método para subir el post
+  void _initializeVideoController() {
+    if (_mediaFile != null) {
+      _videoController = VideoPlayerController.file(_mediaFile!)
+        ..initialize().then((_) {
+          setState(() {}); // Actualiza el estado para que se muestre el video
+        });
+    }
+  }
+
+  void _disposeVideoController() {
+    _videoController?.dispose();
+    _videoController = null;
+  }
+
   Future<void> _uploadPost() async {
     if (_mediaFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,18 +116,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         throw 'Usuario no autenticado.';
       }
 
-      // Crear carpeta del usuario en Firebase Storage
       final String userFolder = currentUser.uid;
       final String fileName = '${DateTime.now().millisecondsSinceEpoch}';
       final Reference storageRef =
           _storage.ref().child('posts/$userFolder/$fileName');
       final UploadTask uploadTask = storageRef.putFile(_mediaFile!);
 
-      // Obtener URL del archivo subido
       final TaskSnapshot snapshot = await uploadTask;
       final String mediaUrl = await snapshot.ref.getDownloadURL();
 
-      // Guardar datos del post en Firestore
       await _firestore.collection('posts').add({
         'userId': currentUser.uid,
         'mediaUrl': mediaUrl,
@@ -128,7 +138,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         const SnackBar(content: Text('¡Post creado con éxito!')),
       );
 
-      // Limpiar campos y estado
       setState(() {
         _mediaFile = null;
         _descriptionController.clear();
@@ -149,6 +158,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void dispose() {
     _descriptionController.dispose();
     _locationController.dispose();
+    _disposeVideoController(); // Libera recursos al salir de la pantalla
     super.dispose();
   }
 
@@ -167,7 +177,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Selector de medios
               GestureDetector(
                 onTap: _selectMedia,
                 child: Container(
@@ -186,11 +195,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: isVideo
-                              ? const Icon(
-                                  Icons.videocam,
-                                  size: 80,
-                                  color: Colors.blueAccent,
-                                )
+                              ? _videoController != null &&
+                                      _videoController!.value.isInitialized
+                                  ? AspectRatio(
+                                      aspectRatio:
+                                          _videoController!.value.aspectRatio,
+                                      child: VideoPlayer(_videoController!),
+                                    )
+                                  : const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
                               : Image.file(
                                   _mediaFile!,
                                   fit: BoxFit.cover,
@@ -200,7 +214,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Campo de descripción
               TextField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
@@ -210,7 +223,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              // Campo de ubicación
               TextField(
                 controller: _locationController,
                 decoration: const InputDecoration(
@@ -219,7 +231,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Botón para subir el post
               ElevatedButton(
                 onPressed: isLoading ? null : _uploadPost,
                 style: ElevatedButton.styleFrom(

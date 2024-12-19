@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:social_media/screens/feed/feed_screen.dart';
-import 'package:social_media/screens/post/create_post_screen.dart';
+import 'package:social_media/screens/posts/create_post_screen.dart';
 import 'package:social_media/screens/profile/profile_screen.dart';
 import 'package:social_media/screens/search/search_screen.dart';
 
