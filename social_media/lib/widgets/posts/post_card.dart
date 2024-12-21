@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:social_media/widgets/posts/comments_modal.dart';
 import 'package:video_player/video_player.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -194,10 +195,11 @@ class _PostCardState extends State<PostCard> {
               IconButton(
                 icon: const Icon(Icons.comment),
                 onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    'comments',
-                    arguments: widget.postId,
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent, // Fondo transparente
+                    builder: (context) => CommentsModal(postId: widget.postId),
                   );
                 },
               ),

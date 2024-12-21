@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:social_media/screens/auth/login_screen.dart';
 import 'package:social_media/screens/auth/register_screen.dart';
-import 'package:social_media/screens/feed/comments_screen.dart';
 import 'package:social_media/screens/feed/feed_screen.dart';
 import 'package:social_media/screens/home/home_screen.dart';
 import 'package:social_media/screens/posts/create_post_screen.dart';
@@ -18,7 +17,6 @@ class AppRoutes {
   static const String profile = 'profile';
   static const String settings = 'settings';
   static const String addPost = 'addPost';
-  static const String comments = 'comments';
 
   static final Map<String, Widget Function(BuildContext, Object?)> _routes = {
     login: (_, __) => const LoginScreen(),
@@ -29,12 +27,6 @@ class AppRoutes {
     profile: (_, __) => const ProfileScreen(),
     settings: (_, __) => const SettingsScreen(),
     addPost: (_, __) => const CreatePostScreen(),
-    comments: (_, args) {
-      if (args is String) {
-        return CommentsScreen(postId: args);
-      }
-      return _errorScreen("Invalid or missing arguments for CommentsScreen");
-    },
   };
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
