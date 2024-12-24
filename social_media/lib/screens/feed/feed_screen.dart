@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:social_media/services/get_thumbnail_url_service.dart';
-import 'package:social_media/widgets/feed/story_video_player.dart';
+import 'package:social_media/widgets/feed/user_story.dart';
 import 'package:social_media/widgets/posts/post_card.dart';
 import 'package:social_media/services/story_service.dart';
 
@@ -38,17 +38,34 @@ class _FeedScreenState extends State<FeedScreen> {
                 }
 
                 final stories = snapshot.data?.docs ?? [];
+
+                // Agrupar las historias por usuario
+                Map<String, List<Map<String, dynamic>>> groupedStories = {};
+
+                for (var story in stories) {
+                  final storyData = story.data() as Map<String, dynamic>;
+                  final userId = storyData['userId'];
+
+                  if (groupedStories.containsKey(userId)) {
+                    groupedStories[userId]?.add(storyData);
+                  } else {
+                    groupedStories[userId] = [storyData];
+                  }
+                }
+
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: stories.length + 1, // +1 para el usuario actual
+                  itemCount: groupedStories.keys.length +
+                      1, // +1 para el usuario actual
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _buildMyStory();
                     }
-                    final story = stories[index - 1];
-                    final storyData = story.data() as Map<String, dynamic>;
 
-                    return _buildStoryTile(storyData);
+                    final userId = groupedStories.keys.elementAt(index - 1);
+                    final userStories = groupedStories[userId]!;
+
+                    return _buildStoryTile(userStories, userId);
                   },
                 );
               },
@@ -115,17 +132,19 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  Widget _buildStoryTile(Map<String, dynamic> storyData) {
+  Widget _buildStoryTile(
+      List<Map<String, dynamic>> userStories, String userId) {
     return GestureDetector(
       onTap: () {
-        _viewStory(storyData);
+        _viewStories(userStories);
       },
       child: Padding(
         padding: const EdgeInsets.only(top: 2.0, left: 8.0, right: 8.0),
         child: Column(
           children: [
             FutureBuilder<String?>(
-              future: getThumbnailUrl(storyData),
+              future: getThumbnailUrl(userStories[
+                  0]), // Solo obtenemos la miniatura de la primera historia
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const CircleAvatar(
@@ -149,10 +168,11 @@ class _FeedScreenState extends State<FeedScreen> {
                     CircleAvatar(
                       radius: 30,
                       backgroundImage: thumbnailPath.startsWith('http')
-                          ? NetworkImage(thumbnailPath) // URL de red.
-                          : FileImage(File(thumbnailPath)), // Ruta local.
+                          ? NetworkImage(thumbnailPath) // URL de red
+                          : FileImage(File(thumbnailPath)), // Ruta local
                     ),
-                    if (storyData['mediaType'] == 'video')
+                    if (userStories
+                        .any((story) => story['mediaType'] == 'video'))
                       const Icon(Icons.play_circle_filled,
                           size: 30, color: Colors.white),
                   ],
@@ -161,7 +181,8 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              storyData['username'],
+              userStories[0][
+                  'username'], // Usamos el primer nombre de usuario en las historias agrupadas
               style: const TextStyle(fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
@@ -171,42 +192,11 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  void _viewStory(Map<String, dynamic> storyData) {
+  void _viewStories(List<Map<String, dynamic>> userStories) {
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.all(0),
-          child: Stack(
-            alignment: Alignment.topRight,
-            children: [
-              if (storyData['mediaType'] == 'image')
-                Image.network(
-                  storyData['mediaUrl'],
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                        child: Text('Error al cargar la imagen'));
-                  },
-                )
-              else if (storyData['mediaType'] == 'video')
-                StoryVideoPlayer(videoUrl: storyData['mediaUrl']),
-              Positioned(
-                top: 16,
-                right: 16,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.black),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-            ],
-          ),
-        );
+        return StoryViewer(userStories: userStories);
       },
     );
   }
