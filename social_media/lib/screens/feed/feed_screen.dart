@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:social_media/screens/feed/story_screen.dart';
 import 'package:social_media/services/get_thumbnail_url_service.dart';
-import 'package:social_media/widgets/feed/user_story.dart';
 import 'package:social_media/widgets/posts/post_card.dart';
 import 'package:social_media/services/story_service.dart';
 
@@ -193,11 +193,11 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _viewStories(List<Map<String, dynamic>> userStories) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StoryViewer(userStories: userStories);
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StoryScreen(userStories: userStories),
+      ),
     );
   }
 }

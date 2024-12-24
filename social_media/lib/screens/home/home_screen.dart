@@ -34,8 +34,63 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text('YourSelf'),
-          backgroundColor: Colors.blue, // Mantén el diseño coherente
+          elevation: 0, // Eliminar sombra del AppBar
+          toolbarHeight: 80, // Ajustar altura del AppBar
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blueAccent, Colors.purple],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(20),
+              ),
+            ),
+          ),
+          centerTitle: true, // Centrar título
+          title: Column(
+            children: [
+              Text(
+                'YourSelf',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.5),
+                      offset: const Offset(2, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const Text(
+                'be free',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {
+                // Acción para notificaciones
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.search, color: Colors.white),
+              onPressed: () {
+                // Acción para búsqueda
+              },
+            ),
+          ],
         ),
         body: _widgetOptions[
             _selectedIndex], // Mostrar la pantalla basada en el índice
