@@ -15,42 +15,71 @@ class _StoryScreenState extends State<StoryScreen> {
   int currentIndex = 0;
   late PageController pageController;
   Timer? timer;
-  double progress = 0.0; // Para controlar la barra de progreso
-  late Duration storyDuration;
+  double progress = 0.0;
+  late int storyDurationMilliseconds;
+  bool isVideo = false;
 
   @override
   void initState() {
     super.initState();
     pageController = PageController();
-    storyDuration =
-        Duration(seconds: 10); // Duración de la historia (puedes cambiarla)
+    _startTimer();
   }
 
-  // Función para avanzar al siguiente estado
-  void _nextStory() {
-    if (currentIndex < widget.userStories.length - 1) {
-      setState(() {
-        currentIndex++;
-        progress = 0.0; // Resetear progreso
+  void _startTimer({Duration? duration}) {
+    timer?.cancel();
+    final storyDuration =
+        duration ?? const Duration(seconds: 5); // Duración predeterminada
+    storyDurationMilliseconds = storyDuration.inMilliseconds;
+    progress = 0.0;
+
+    if (!isVideo) {
+      timer = Timer.periodic(const Duration(milliseconds: 50), (Timer t) {
+        setState(() {
+          progress += 50 / storyDurationMilliseconds;
+          if (progress >= 1.0) {
+            _nextStory();
+          }
+        });
       });
-      pageController
-          .jumpToPage(currentIndex); // Avanzamos a la siguiente historia
-    } else {
-      Navigator.of(context).pop(); // Volver al feed si no hay más historias
     }
   }
 
-  // Función para actualizar el progreso de la barra de progreso
-  void _updateProgress(double newProgress) {
-    setState(() {
-      progress = newProgress;
-    });
+  void _nextStory() {
+    timer?.cancel();
+    if (currentIndex < widget.userStories.length - 1) {
+      setState(() {
+        currentIndex++;
+        progress = 0.0;
+        isVideo = widget.userStories[currentIndex]['mediaType'] == 'video';
+      });
+      pageController.jumpToPage(currentIndex);
+
+      final nextStory = widget.userStories[currentIndex];
+      final storyDuration = nextStory['mediaType'] == 'video'
+          ? Duration(seconds: nextStory['duration'] ?? 5)
+          : const Duration(seconds: 5);
+      _startTimer(duration: storyDuration);
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
-  // Controla el avance automático en las imágenes
-  void _handleImageTimeout() {
-    if (timer == null || !timer!.isActive) {
-      timer = Timer(storyDuration, _nextStory);
+  void _previousStory() {
+    timer?.cancel();
+    if (currentIndex > 0) {
+      setState(() {
+        currentIndex--;
+        progress = 0.0;
+        isVideo = widget.userStories[currentIndex]['mediaType'] == 'video';
+      });
+      pageController.jumpToPage(currentIndex);
+
+      final previousStory = widget.userStories[currentIndex];
+      final storyDuration = previousStory['mediaType'] == 'video'
+          ? Duration(seconds: previousStory['duration'] ?? 5)
+          : const Duration(seconds: 5);
+      _startTimer(duration: storyDuration);
     }
   }
 
@@ -59,18 +88,24 @@ class _StoryScreenState extends State<StoryScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
-        onTap: () {
-          _nextStory(); // Avanzar a la siguiente historia al hacer clic en la pantalla
+        onTapUp: (details) {
+          final screenWidth = MediaQuery.of(context).size.width;
+          if (details.globalPosition.dx < screenWidth / 2) {
+            _previousStory();
+          } else {
+            _nextStory();
+          }
         },
         child: Stack(
           children: [
             PageView.builder(
               controller: pageController,
+              physics: const NeverScrollableScrollPhysics(),
               itemCount: widget.userStories.length,
               itemBuilder: (context, index) {
                 final story = widget.userStories[index];
                 if (story['mediaType'] == 'image') {
-                  _handleImageTimeout(); // Inicia el temporizador para imágenes
+                  isVideo = false;
                   return Image.network(
                     story['mediaUrl'],
                     fit: BoxFit.contain,
@@ -80,27 +115,27 @@ class _StoryScreenState extends State<StoryScreen> {
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return const Center(
-                          child: Text('Error al cargar la imagen'));
+                        child: Text('Error al cargar la imagen'),
+                      );
                     },
                   );
                 } else if (story['mediaType'] == 'video') {
+                  isVideo = true;
                   return StoryVideoPlayer(
                     videoUrl: story['mediaUrl'],
-                    onVideoFinished:
-                        _nextStory, // Avanzamos a la siguiente historia cuando el video termina
-                    onProgressUpdate:
-                        _updateProgress, // Actualización del progreso de la barra
-                    storyDuration:
-                        storyDuration, // Duración de la historia para sincronizar el progreso
+                    onVideoFinished: _nextStory,
+                    onProgressUpdate: (value) {
+                      setState(() {
+                        progress =
+                            value; // Actualiza el progreso según el video
+                      });
+                    },
+                    storyDuration: Duration(
+                      seconds: story['duration'] ?? 5,
+                    ),
                   );
                 }
                 return const Center(child: Text('Tipo de medio no soportado'));
-              },
-              onPageChanged: (index) {
-                setState(() {
-                  currentIndex = index;
-                  progress = 0.0; // Resetear progreso al cambiar de página
-                });
               },
             ),
             Positioned(
@@ -108,33 +143,26 @@ class _StoryScreenState extends State<StoryScreen> {
               left: 0,
               right: 0,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   widget.userStories.length,
-                  (index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Container(
-                      width: 30,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color:
-                            index == currentIndex ? Colors.white : Colors.grey,
-                        borderRadius: BorderRadius.circular(2),
+                  (index) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                      child: LinearProgressIndicator(
+                        value: index < currentIndex
+                            ? 1.0
+                            : (index == currentIndex ? progress : 0.0),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          index == currentIndex
+                              ? Colors.blue
+                              : Colors.grey.shade300,
+                        ),
+                        backgroundColor: Colors.grey.shade300,
+                        minHeight: 3,
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              left: 0,
-              right: 0,
-              child: LinearProgressIndicator(
-                value: progress,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                backgroundColor: Colors.transparent,
-                minHeight: 3,
               ),
             ),
           ],

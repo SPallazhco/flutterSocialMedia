@@ -39,12 +39,10 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
 
   void _updateProgress() {
     final position = _controller.value.position;
-    final progress =
-        position.inMilliseconds / widget.storyDuration.inMilliseconds;
-    widget.onProgressUpdate(progress); // Actualizamos la barra de progreso
+    final progress = position.inMilliseconds / _videoDuration.inMilliseconds;
+    widget.onProgressUpdate(progress);
     if (position >= _videoDuration) {
-      widget
-          .onVideoFinished(); // El video ha terminado, avanzamos a la siguiente historia
+      widget.onVideoFinished();
     }
   }
 
