@@ -65,6 +65,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    try {
+      await _auth.signOut();
+      Navigator.of(context).pushReplacementNamed(
+          'login'); // Redirigir a la pantalla de inicio de sesión
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cerrar sesión: $e')),
+      );
+    }
+  }
+
   Future<void> _uploadImage() async {
     if (_imageFile == null) return;
 
@@ -154,6 +166,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.red),
+            tooltip: 'Cerrar sesión',
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -167,7 +186,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       key: _formKey,
                       child: Column(
                         children: [
-                          // Imagen de perfil
                           GestureDetector(
                             onTap: _pickImage,
                             child: CircleAvatar(
@@ -186,7 +204,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Campos de texto
                           TextFormField(
                             controller: _usernameController,
                             decoration:
@@ -224,7 +241,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             keyboardType: TextInputType.phone,
                           ),
                           const SizedBox(height: 20),
-                          // Botones
                           ElevatedButton(
                             onPressed: _updateProfile,
                             style: ElevatedButton.styleFrom(
