@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:video_player/video_player.dart'; // Importa el paquete de video_player
+import 'package:video_player/video_player.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -22,14 +22,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool isVideo = false;
   bool isLoading = false;
 
-  VideoPlayerController? _videoController; // Controlador del video
+  VideoPlayerController? _videoController;
 
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
 
   Future<void> _selectMedia() async {
     final picker = ImagePicker();
-
     try {
       final mediaType = await showDialog<String>(
         context: context,
@@ -60,7 +59,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           maxHeight: 1080,
         );
         isVideo = false;
-        _disposeVideoController(); // Libera el controlador si había un video cargado
+        _disposeVideoController();
       } else if (mediaType == 'video') {
         pickedFile = await picker.pickVideo(source: ImageSource.gallery);
         isVideo = true;
@@ -72,7 +71,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         });
 
         if (isVideo) {
-          _initializeVideoController(); // Inicializa el controlador si es un video
+          _initializeVideoController();
         }
       }
     } catch (e) {
@@ -86,7 +85,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (_mediaFile != null) {
       _videoController = VideoPlayerController.file(_mediaFile!)
         ..initialize().then((_) {
-          setState(() {}); // Actualiza el estado para que se muestre el video
+          setState(() {});
         });
     }
   }
@@ -158,7 +157,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void dispose() {
     _descriptionController.dispose();
     _locationController.dispose();
-    _disposeVideoController(); // Libera recursos al salir de la pantalla
+    _disposeVideoController();
     super.dispose();
   }
 
@@ -171,80 +170,85 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              GestureDetector(
-                onTap: _selectMedia,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  GestureDetector(
+                    onTap: _selectMedia,
+                    child: Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: _mediaFile == null
+                          ? const Center(
+                              child: Text(
+                                'Seleccionar imagen o video',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: isVideo
+                                  ? _videoController != null &&
+                                          _videoController!.value.isInitialized
+                                      ? AspectRatio(
+                                          aspectRatio: _videoController!
+                                              .value.aspectRatio,
+                                          child: VideoPlayer(_videoController!),
+                                        )
+                                      : const Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                  : Image.file(
+                                      _mediaFile!,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                    ),
+                            ),
+                    ),
                   ),
-                  child: _mediaFile == null
-                      ? const Center(
-                          child: Text(
-                            'Seleccionar imagen o video',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: isVideo
-                              ? _videoController != null &&
-                                      _videoController!.value.isInitialized
-                                  ? AspectRatio(
-                                      aspectRatio:
-                                          _videoController!.value.aspectRatio,
-                                      child: VideoPlayer(_videoController!),
-                                    )
-                                  : const Center(
-                                      child: CircularProgressIndicator(),
-                                    )
-                              : Image.file(
-                                  _mediaFile!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                        ),
-                ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Descripción',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Ubicación',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _uploadPost,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Publicar'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Ubicación',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: isLoading ? null : _uploadPost,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Publicar'),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (isLoading) const LinearProgressIndicator(), // Barra de progreso
+        ],
       ),
     );
   }
