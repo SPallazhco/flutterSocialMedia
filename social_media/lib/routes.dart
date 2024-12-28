@@ -5,6 +5,7 @@ import 'package:social_media/screens/feed/feed_screen.dart';
 import 'package:social_media/screens/home/home_screen.dart';
 import 'package:social_media/screens/posts/create_post_screen.dart';
 import 'package:social_media/screens/profile/profile_screen.dart';
+import 'package:social_media/screens/profile/user_profile_screen.dart';
 import 'package:social_media/screens/search/search_screen.dart';
 import 'package:social_media/screens/profile/settings_screen.dart';
 
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String profile = 'profile';
   static const String settings = 'settings';
   static const String addPost = 'addPost';
+  static const String userProfile = 'userProfile';
 
   static final Map<String, Widget Function(BuildContext, Object?)> _routes = {
     login: (_, __) => const LoginScreen(),
@@ -27,6 +29,13 @@ class AppRoutes {
     profile: (_, __) => const ProfileScreen(),
     settings: (_, __) => const SettingsScreen(),
     addPost: (_, __) => const CreatePostScreen(),
+    userProfile: (_, arguments) {
+      if (arguments is String) {
+        return UserProfileScreen(userId: arguments);
+      } else {
+        return _errorScreen("Invalid arguments for userProfile route");
+      }
+    },
   };
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {

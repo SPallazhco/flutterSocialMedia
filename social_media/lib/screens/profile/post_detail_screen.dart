@@ -51,10 +51,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   void _initializeMedia() {
     if (widget.post['mediaType'] == 'video') {
-      _videoController = VideoPlayerController.network(widget.post['mediaUrl'])
-        ..initialize().then((_) {
-          setState(() {});
-        });
+      _videoController =
+          VideoPlayerController.networkUrl(Uri.parse(widget.post['mediaUrl']))
+            ..initialize().then((_) {
+              setState(() {});
+            });
     }
   }
 

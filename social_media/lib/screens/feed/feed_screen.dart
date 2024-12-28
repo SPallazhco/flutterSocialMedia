@@ -24,7 +24,7 @@ class _FeedScreenState extends State<FeedScreen> {
         children: [
           // Historias
           SizedBox(
-            height: 120, // Espacio para las historias
+            height: 90, // Espacio para las historias
             child: StreamBuilder<QuerySnapshot>(
               stream: _firestore
                   .collection('stories')

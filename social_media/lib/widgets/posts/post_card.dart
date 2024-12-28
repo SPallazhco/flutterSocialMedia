@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:social_media/routes.dart';
 import 'package:social_media/widgets/posts/comments_modal.dart';
 import 'package:video_player/video_player.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -111,25 +112,33 @@ class _PostCardState extends State<PostCard> {
               }
 
               final userData = snapshot.data!;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.blueAccent,
-                  backgroundImage: userData['profileImage'] != null &&
-                          userData['profileImage'].isNotEmpty
-                      ? NetworkImage(userData['profileImage'])
-                      : null,
-                  child: userData['profileImage'] == null ||
-                          userData['profileImage'].isEmpty
-                      ? Text(
-                          userData['username'][0].toUpperCase(),
-                          style: const TextStyle(color: Colors.white),
-                        )
-                      : null,
-                ),
-                title: Text(userData['username']),
-                subtitle: Text(
-                  _getTimeAgo(widget.postData['createdAt']),
-                  style: const TextStyle(color: Colors.grey),
+              return GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pushNamed(
+                    AppRoutes.userProfile,
+                    arguments: widget.postData['userId'],
+                  );
+                },
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blueAccent,
+                    backgroundImage: userData['profileImage'] != null &&
+                            userData['profileImage'].isNotEmpty
+                        ? NetworkImage(userData['profileImage'])
+                        : null,
+                    child: userData['profileImage'] == null ||
+                            userData['profileImage'].isEmpty
+                        ? Text(
+                            userData['username'][0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          )
+                        : null,
+                  ),
+                  title: Text(userData['username']),
+                  subtitle: Text(
+                    _getTimeAgo(widget.postData['createdAt']),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
                 ),
               );
             },

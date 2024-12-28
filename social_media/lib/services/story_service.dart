@@ -9,6 +9,7 @@ import 'package:social_media/services/media_service.dart';
 class StoryService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Map<String, dynamic> userData = {};
 
   Future<void> uploadStory(BuildContext context) async {
     final user = _auth.currentUser;
@@ -24,6 +25,13 @@ class StoryService {
     }
 
     try {
+      final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+      if (userDoc.exists) {
+        userData = userDoc.data() as Map<String, dynamic>;
+      } else {
+        return; // Usuario no encontrado.
+      }
+
       final File file = File(selectedMedia.file.path);
       final String fileName =
           '${user.uid}_${DateTime.now().millisecondsSinceEpoch}_${selectedMedia.file.name}';
@@ -43,7 +51,7 @@ class StoryService {
       // Guardar la historia en Firestore
       await _firestore.collection('stories').add({
         'userId': user.uid,
-        'username': '',
+        'username': userData['username'],
         'mediaUrl': mediaUrl,
         'mediaType': selectedMedia.mediaType, // 'image' o 'video'
         'createdAt': FieldValue.serverTimestamp(),
