@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:social_media/screens/profile/post_detail_screen.dart';
+import 'package:social_media/widgets/common/info_card.dart';
 import 'package:social_media/widgets/profile/video_player.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -14,14 +16,20 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Map<String, dynamic>? userData;
   bool _isLoading = false;
+  bool isFollowing = false; // Estado del botón seguir/dejar de seguir
+  int followersCount = 0; // Número de seguidores
+  int followingCount = 0; // Número de seguidores
+  int postsCount = 0; // Número de publicaciones
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _checkIfFollowing();
   }
 
   Future<void> _fetchUserData() async {
@@ -36,8 +44,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (userDoc.exists) {
         setState(() {
           userData = userDoc.data();
+          followersCount = ((userData?['followers'] as List?)?.length) ?? 0;
         });
       }
+
+      // Obtener el número de usuarios seguidos
+      final currentUserDoc = await _firestore
+          .collection('Users')
+          .doc(_auth.currentUser!.uid)
+          .get();
+
+      if (currentUserDoc.exists) {
+        setState(() {
+          followingCount =
+              ((currentUserDoc.data()?['following'] as List?)?.length) ?? 0;
+        });
+      }
+
+      // Obtener el número de publicaciones
+      final postsSnapshot = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: widget.userId)
+          .get();
+
+      setState(() {
+        postsCount = postsSnapshot.docs.length;
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al obtener datos del usuario: $e')),
@@ -45,6 +77,91 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     } finally {
       setState(() {
         _isLoading = false;
+      });
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userDoc =
+          await _firestore.collection('Users').doc(widget.userId).get();
+
+      if (userDoc.exists) {
+        setState(() {
+          userData = userDoc.data();
+          followersCount = ((userData?['followers'] as List?)?.length) ?? 0;
+        });
+      }
+
+      // Obtener el número de publicaciones
+      final postsSnapshot = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: widget.userId)
+          .get();
+
+      setState(() {
+        postsCount = postsSnapshot.docs.length;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al obtener datos del usuario: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkIfFollowing() async {
+    final currentUserId = _auth.currentUser!.uid;
+    final userDoc =
+        await _firestore.collection('Users').doc(widget.userId).get();
+
+    if (userDoc.exists) {
+      final followers = List<String>.from(userDoc.data()?['followers'] ?? []);
+      setState(() {
+        isFollowing = followers.contains(currentUserId);
+      });
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final currentUserId = _auth.currentUser!.uid;
+    final userRef = _firestore.collection('Users').doc(widget.userId);
+    final currentUserRef = _firestore.collection('Users').doc(currentUserId);
+
+    if (isFollowing) {
+      // Dejar de seguir: remover el ID del usuario actual de los seguidores del otro usuario
+      await userRef.update({
+        'followers': FieldValue.arrayRemove([currentUserId]),
+      });
+
+      // Remover el ID del usuario que estamos dejando de seguir de nuestros seguidos
+      await currentUserRef.update({
+        'following': FieldValue.arrayRemove([widget.userId]),
+      });
+
+      setState(() {
+        isFollowing = false;
+        followersCount--;
+      });
+    } else {
+      // Seguir: agregar el ID del usuario actual a los seguidores del otro usuario
+      await userRef.update({
+        'followers': FieldValue.arrayUnion([currentUserId]),
+      });
+
+      // Agregar el ID del usuario que estamos siguiendo a nuestros seguidos
+      await currentUserRef.update({
+        'following': FieldValue.arrayUnion([widget.userId]),
+      });
+
+      setState(() {
+        isFollowing = true;
+        followersCount++;
       });
     }
   }
@@ -88,6 +205,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         style: const TextStyle(fontSize: 14),
                       ),
                       const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          InfoCard(title: "Seguidores", count: followersCount),
+                          InfoCard(title: "Seguidos", count: followingCount),
+                          InfoCard(title: "Publicaciones", count: postsCount),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      if (widget.userId != _auth.currentUser!.uid)
+                        ElevatedButton(
+                          onPressed: _toggleFollow,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isFollowing ? Colors.red : Colors.blue,
+                          ),
+                          child: Text(
+                            isFollowing ? "Dejar de seguir" : "Seguir",
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
                       const Divider(),
                       const Text(
                         "Publicaciones",
@@ -138,13 +276,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           itemCount: posts.length,
           itemBuilder: (context, index) {
-            // Extraer datos del documento
             final doc = posts[index];
             final postData = doc.data() as Map<String, dynamic>;
             final mediaType = postData['mediaType'];
             final mediaUrl = postData['mediaUrl'];
 
-            // Agregar el postId a los datos
             postData['postId'] = doc.id;
 
             return GestureDetector(
@@ -159,7 +295,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Fondo con imagen o video
                   Container(
                     color: Colors.grey[300],
                     child: mediaType == 'video'
@@ -169,7 +304,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             fit: BoxFit.cover,
                           ),
                   ),
-                  // Ícono para diferenciar videos
                   if (mediaType == 'video')
                     const Positioned(
                       top: 8,
