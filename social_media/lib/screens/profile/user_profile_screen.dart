@@ -19,10 +19,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Map<String, dynamic>? userData;
   bool _isLoading = false;
-  bool isFollowing = false; // Estado del botón seguir/dejar de seguir
-  int followersCount = 0; // Número de seguidores
-  int followingCount = 0; // Número de seguidos
-  int postsCount = 0; // Número de publicaciones
+  bool isFollowing = false;
+  int followersCount = 0;
+  int followingCount = 0;
+  int postsCount = 0;
 
   @override
   void initState() {
@@ -31,14 +31,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _checkIfFollowing();
   }
 
-  // Obtener datos del usuario (perfil, seguidores, seguidos, publicaciones)
   Future<void> _fetchUserData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Obtener los datos del perfil del usuario objetivo
+      // Obtener los datos del perfil del usuario
       final userDoc =
           await _firestore.collection('Users').doc(widget.userId).get();
 
@@ -46,16 +45,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         setState(() {
           userData = userDoc.data();
           followersCount = ((userData?['followers'] as List?)?.length) ?? 0;
-        });
-      }
-
-      // Obtener el número de usuarios seguidos por el usuario actual
-      final currentUserDoc =
-          await _firestore.collection('Users').doc(widget.userId).get();
-      if (currentUserDoc.exists) {
-        setState(() {
-          followingCount =
-              ((currentUserDoc.data()?['following'] as List?)?.length) ?? 0;
+          followingCount = ((userData?['following'] as List?)?.length) ?? 0;
         });
       }
 
@@ -77,7 +67,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  // Verificar si el usuario actual está siguiendo al usuario objetivo
   Future<void> _checkIfFollowing() async {
     final currentUserId = _auth.currentUser!.uid;
     final userDoc =
@@ -91,43 +80,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  // Lógica de seguir o dejar de seguir
   Future<void> _toggleFollow() async {
     final currentUserId = _auth.currentUser!.uid;
     final userRef = _firestore.collection('Users').doc(widget.userId);
     final currentUserRef = _firestore.collection('Users').doc(currentUserId);
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       if (isFollowing) {
-        // Dejar de seguir: eliminar el ID del usuario actual de los seguidores del otro usuario
         await userRef.update({
           'followers': FieldValue.arrayRemove([currentUserId]),
         });
 
-        // Eliminar el ID del usuario que estamos dejando de seguir de nuestros seguidos
         await currentUserRef.update({
           'following': FieldValue.arrayRemove([widget.userId]),
         });
 
+        // Actualiza contadores
         setState(() {
           isFollowing = false;
           followersCount--;
         });
       } else {
-        // Seguir: agregar el ID del usuario actual a los seguidores del otro usuario
         await userRef.update({
           'followers': FieldValue.arrayUnion([currentUserId]),
         });
 
-        // Agregar el ID del usuario que estamos siguiendo a nuestros seguidos
         await currentUserRef.update({
           'following': FieldValue.arrayUnion([widget.userId]),
         });
 
+        // Actualiza contadores
         setState(() {
           isFollowing = true;
           followersCount++;
@@ -136,10 +118,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al actualizar el seguimiento: $e')));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -156,7 +134,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ? const Center(child: CircularProgressIndicator())
           : userData == null
               ? const Center(
-                  child: Text("No se encontró la información del usuario."))
+                  child: Text("No se encontró la información del usuario."),
+                )
               : SingleChildScrollView(
                   child: Column(
                     children: [
