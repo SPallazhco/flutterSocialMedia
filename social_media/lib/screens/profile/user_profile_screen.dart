@@ -50,10 +50,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
 
       // Obtener el número de usuarios seguidos por el usuario actual
-      final currentUserDoc = await _firestore
-          .collection('Users')
-          .doc(_auth.currentUser!.uid)
-          .get();
+      final currentUserDoc =
+          await _firestore.collection('Users').doc(widget.userId).get();
       if (currentUserDoc.exists) {
         setState(() {
           followingCount =
