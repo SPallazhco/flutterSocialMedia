@@ -44,6 +44,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (userDoc.exists) {
         setState(() {
           userData = userDoc.data();
+          followersCount = userData?['followers']?.length ?? 0;
+          followingCount = userData?['following']?.length ?? 0;
         });
       }
 
@@ -54,23 +56,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           .get();
       setState(() {
         postsCount = postsSnapshot.docs.length;
-      });
-
-      // Obtener el número de seguidores y seguidos
-      final followersSnapshot = await _firestore
-          .collection('followers')
-          .where('followedUserId', isEqualTo: widget.userId)
-          .get();
-      setState(() {
-        followersCount = followersSnapshot.docs.length;
-      });
-
-      final followingSnapshot = await _firestore
-          .collection('follows')
-          .where('followerUserId', isEqualTo: widget.userId)
-          .get();
-      setState(() {
-        followingCount = followingSnapshot.docs.length;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,16 +69,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _checkIfFollowing() async {
     final currentUserId = _auth.currentUser!.uid;
+    final userDoc =
+        await _firestore.collection('Users').doc(widget.userId).get();
 
-    final followsDoc = await _firestore
-        .collection('follows')
-        .where('followerUserId', isEqualTo: currentUserId)
-        .where('followedUserId', isEqualTo: widget.userId)
-        .get();
-
-    setState(() {
-      isFollowing = followsDoc.docs.isNotEmpty;
-    });
+    if (userDoc.exists) {
+      final followers =
+          Map<String, dynamic>.from(userDoc.data()?['followers'] ?? {});
+      setState(() {
+        isFollowing = followers.containsKey(currentUserId);
+      });
+    }
   }
 
   Future<void> _toggleFollow() async {
@@ -104,33 +89,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       if (isFollowing) {
         // Dejar de seguir
-        await _firestore
-            .collection('follows')
-            .where('followerUserId', isEqualTo: currentUserId)
-            .where('followedUserId', isEqualTo: widget.userId)
-            .get()
-            .then((snapshot) {
-          for (var doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        });
+        final userDoc = await userRef.get();
+        final currentUserDoc = await currentUserRef.get();
 
-        await _firestore
-            .collection('followers')
-            .where('followerUserId', isEqualTo: currentUserId)
-            .where('followedUserId', isEqualTo: widget.userId)
-            .get()
-            .then((snapshot) {
-          for (var doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        });
+        if (userDoc.exists && currentUserDoc.exists) {
+          // Elimina al seguidor directamente sin cargar todos los seguidores
+          await userRef.update({
+            'followers.$currentUserId':
+                FieldValue.delete(), // Elimina al seguidor por su ID
+          });
 
-        // Actualiza solo el contador de seguidores del usuario objetivo
-        setState(() {
-          isFollowing = false;
-          followersCount--; // Decrecer solo los seguidores
-        });
+          await currentUserRef.update({
+            'following.${widget.userId}':
+                FieldValue.delete(), // Elimina al seguido del usuario
+          });
+
+          // Actualiza contadores
+          setState(() {
+            isFollowing = false;
+            followersCount--;
+          });
+        }
       } else {
         // Seguir
         final currentUserData = (await currentUserRef.get()).data();
@@ -141,27 +120,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             'name': currentUserData['username'],
             'lastname': currentUserData['lastname'],
             'profileImage': currentUserData['profileImage'],
-            'followerUserId': currentUserId,
-            'followedUserId': widget.userId,
           };
 
           final targetUserFollowData = {
             'name': targetUserData['username'],
             'lastname': targetUserData['lastname'],
             'profileImage': targetUserData['profileImage'],
-            'followerUserId': currentUserId,
-            'followedUserId': widget.userId,
           };
 
-          // Agregar la relación de seguimiento a la colección "follows"
-          await _firestore.collection('follows').add(currentUserFollowData);
-          // Agregar la relación de seguidor a la colección "followers"
-          await _firestore.collection('followers').add(targetUserFollowData);
+          // Agregar al seguidor al mapa
+          await userRef.update({
+            'followers.$currentUserId': currentUserFollowData,
+          });
 
-          // Actualiza solo el contador de seguidores del usuario objetivo
+          await currentUserRef.update({
+            'following.${widget.userId}': targetUserFollowData,
+          });
+
+          // Actualiza contadores
           setState(() {
             isFollowing = true;
-            followersCount++; // Aumentar solo los seguidores del usuario objetivo
+            followersCount++;
           });
         }
       }
